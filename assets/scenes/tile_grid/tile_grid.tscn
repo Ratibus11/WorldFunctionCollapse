@@ -1,0 +1,7 @@
+[gd_scene load_steps=2 format=3 uid="uid://bud0bib4veis2"]
+
+[ext_resource type="Script" path="res://assets/scenes/tile_grid/tile_grid.gd" id="1"]
+
+[node name="tile_grid" type="TileMap"]
+format = 2
+script = ExtResource("1")
