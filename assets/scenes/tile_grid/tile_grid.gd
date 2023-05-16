@@ -3,7 +3,6 @@ extends TileMap
 
 const SCENE_PATH: String = "res://assets/scene/tile_grid/tile_grid.tscn"
 var SELECTOR = TileSelector.new()
-const SCREEN_SIZE = Vector2(30, 55)
 enum CONCRETE_TILE {
 	CORNER_BOTTOM_LEFT,
 	CORNER_BOTTOM_RIGHT,
