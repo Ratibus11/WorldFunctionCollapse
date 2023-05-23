@@ -31,7 +31,7 @@ enum CONCRETE_TILE {
 const TILE_SIZE = 30
 var tiles: Array[Tile] = []
 
-func __place_tile(tile: Tile, tile_coordinates: Vector2, bypassLimits: bool = true) -> void:
+func __place_tile(tile: Tile, tile_coordinates: Vector2, bypassLimits: bool = false) -> void:
 	if not bypassLimits and not __areCoordinatesInGrid(tile_coordinates):
 		push_warning(str("Cannot place tile at x:"+str(tile_coordinates.x)+" y:"+str(tile_coordinates.y)+"."))
 		return 
@@ -220,16 +220,16 @@ func __generateGridBarrier(gridSize: int):
 	Check.isInt(gridSize);
 	Check.isOdd(gridSize);
 	
-	__place_tile(__getConcreteTile(CONCRETE_TILE.CORNER_BOTTOM_RIGHT), Vector2(-1, -1))
-	__place_tile(__getConcreteTile(CONCRETE_TILE.CORNER_BOTTOM_LEFT), Vector2(gridSize, -1))
-	__place_tile(__getConcreteTile(CONCRETE_TILE.CORNER_TOP_RIGHT), Vector2(-1, gridSize))
-	__place_tile(__getConcreteTile(CONCRETE_TILE.CORNER_TOP_LEFT), Vector2(gridSize, gridSize))
+	__place_tile(__getConcreteTile(CONCRETE_TILE.CORNER_BOTTOM_RIGHT), Vector2(-1, -1), true)
+	__place_tile(__getConcreteTile(CONCRETE_TILE.CORNER_BOTTOM_LEFT), Vector2(gridSize, -1), true)
+	__place_tile(__getConcreteTile(CONCRETE_TILE.CORNER_TOP_RIGHT), Vector2(-1, gridSize), true)
+	__place_tile(__getConcreteTile(CONCRETE_TILE.CORNER_TOP_LEFT), Vector2(gridSize, gridSize), true)
 	
 	for i in range(gridSize):
-		__place_tile(__getConcreteTile(CONCRETE_TILE.HORIZONTAL), Vector2(i, -1))
-		__place_tile(__getConcreteTile(CONCRETE_TILE.HORIZONTAL), Vector2(i, gridSize))
-		__place_tile(__getConcreteTile(CONCRETE_TILE.VERTICAL), Vector2(gridSize, i))
-		__place_tile(__getConcreteTile(CONCRETE_TILE.VERTICAL), Vector2(-1, i))
+		__place_tile(__getConcreteTile(CONCRETE_TILE.HORIZONTAL), Vector2(i, -1), true)
+		__place_tile(__getConcreteTile(CONCRETE_TILE.HORIZONTAL), Vector2(i, gridSize), true)
+		__place_tile(__getConcreteTile(CONCRETE_TILE.VERTICAL), Vector2(gridSize, i), true)
+		__place_tile(__getConcreteTile(CONCRETE_TILE.VERTICAL), Vector2(-1, i), true)
 
 		
 
