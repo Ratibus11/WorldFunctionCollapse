@@ -1,6 +1,11 @@
 class_name TileGrid
 extends TileMap
 
+const RENDER_BARRIER = true
+const RENDER_SLEEP = 0.01
+const MANUAL_RENDER = false
+const GRID_SIZE = 31
+
 const SCENE_PATH: String = "res://assets/scene/tile_grid/tile_grid.tscn"
 var SELECTOR = TileSelector.new()
 enum CONCRETE_TILE {
@@ -23,10 +28,14 @@ enum CONCRETE_TILE {
 	COUNT
 }
 
-var tiles: Array[Tile] = []
 const TILE_SIZE = 30
+var tiles: Array[Tile] = []
 
-func place_tile(tile: Tile, tile_coordinates: Vector2) -> void:
+func __place_tile(tile: Tile, tile_coordinates: Vector2, bypassLimits: bool = true) -> void:
+	if not bypassLimits and not __areCoordinatesInGrid(tile_coordinates):
+		push_warning(str("Cannot place tile at x:"+str(tile_coordinates.x)+" y:"+str(tile_coordinates.y)+"."))
+		return 
+		
 	Check.isInt(tile_coordinates.x)
 	Check.isInt(tile_coordinates.y)
 	
@@ -39,19 +48,23 @@ func place_tile(tile: Tile, tile_coordinates: Vector2) -> void:
 func _input(event: InputEvent) -> void:
 	var TILE_COORDINATES = __getTileCoordinatesFromClick(event.position)
 	
+	if not __areCoordinatesInGrid(TILE_COORDINATES):
+		return
+	
 	if event is InputEventMouseButton:
 		if event.pressed == true:
 			if not __isTileOccupied(TILE_COORDINATES):
 				var possible_tiles = __getPossibleTiles(TILE_COORDINATES)
-				place_tile(__getRandomTile(possible_tiles), TILE_COORDINATES)
+				__place_tile(__getRandomTile(possible_tiles), TILE_COORDINATES)
 				
 	elif event is InputEventMouseMotion:
-		if not __isTileOccupied(TILE_COORDINATES):
-			var COORDINATES = Vector2(TILE_COORDINATES.x * TILE_SIZE, TILE_COORDINATES.y * TILE_SIZE)
-			SELECTOR.set_position(COORDINATES)
-			SELECTOR.show()
-		else:
-			SELECTOR.hide()
+		if MANUAL_RENDER:
+			if not __isTileOccupied(TILE_COORDINATES):
+				var COORDINATES = Vector2(TILE_COORDINATES.x * TILE_SIZE, TILE_COORDINATES.y * TILE_SIZE)
+				SELECTOR.set_position(COORDINATES)
+				SELECTOR.show()
+			else:
+				SELECTOR.hide()
 
 func __getPossibleTiles(new_tile_coordinates: Vector2):
 	var TOP_NEIGHBOR_COORDINATES = Vector2(new_tile_coordinates.x, new_tile_coordinates.y - 1)
@@ -88,9 +101,6 @@ func __getPossibleTiles(new_tile_coordinates: Vector2):
 func __getTileCoordinatesFromClick(vector: Vector2) -> Vector2:
 	var X = vector.x
 	var Y = vector.y
-	
-	Check.isPositiveNumber(X)
-	Check.isPositiveNumber(Y)
 	
 	var TILE_X = int(X / TILE_SIZE)
 	var TILE_Y = int(Y / TILE_SIZE)
@@ -166,11 +176,88 @@ func __getConcreteTiles() -> Array[Tile]:
 		TILES.append(__getConcreteTile(i))
 	return TILES
 	
+func __initWindowSize(size: int) -> void:
+	Check.isInt(size);
+	Check.isOdd(size);
+	
+	var SIZE = size * TILE_SIZE
+	DisplayServer.window_set_size(Vector2(SIZE, SIZE))
+	
+func __generateGrid(size: int) -> void:
+	Check.isInt(size);
+	Check.isOdd(size);
+	
+	var cursor_x = (size - 1) / 2
+	var cursor = Vector2(cursor_x, cursor_x)
+	
+	var MOVEMENTS: Array[Vector2] = [
+		Vector2(0, -1),
+		Vector2(1, 0),
+		Vector2(0, 1),
+		Vector2(-1, 0)
+	]
+	
+	for x in range(cursor_x + 1):
+		for i in range(MOVEMENTS.size()):
+			var movement = MOVEMENTS[i]
+			
+			cursor = Vector2(cursor.x + movement.x, cursor.y + movement.y)
+			
+			var possible_tiles = __getPossibleTiles(cursor)
+			__place_tile(__getRandomTile(possible_tiles), cursor)
+			await get_tree().create_timer(RENDER_SLEEP).timeout
+			
+			var nextAxisTile = __getNextAxisCursorPosition(MOVEMENTS, i, cursor)
+			while __isTileOccupied(nextAxisTile):
+				cursor = Vector2(cursor.x + movement.x, cursor.y + movement.y)
+				nextAxisTile = __getNextAxisCursorPosition(MOVEMENTS, i, cursor)
+				
+				possible_tiles = __getPossibleTiles(cursor)
+				__place_tile(__getRandomTile(possible_tiles), cursor)
+				await get_tree().create_timer(RENDER_SLEEP).timeout
+
+func __generateGridBarrier(gridSize: int):
+	Check.isInt(gridSize);
+	Check.isOdd(gridSize);
+	
+	__place_tile(__getConcreteTile(CONCRETE_TILE.CORNER_BOTTOM_RIGHT), Vector2(-1, -1))
+	__place_tile(__getConcreteTile(CONCRETE_TILE.CORNER_BOTTOM_LEFT), Vector2(gridSize, -1))
+	__place_tile(__getConcreteTile(CONCRETE_TILE.CORNER_TOP_RIGHT), Vector2(-1, gridSize))
+	__place_tile(__getConcreteTile(CONCRETE_TILE.CORNER_TOP_LEFT), Vector2(gridSize, gridSize))
+	
+	for i in range(gridSize):
+		__place_tile(__getConcreteTile(CONCRETE_TILE.HORIZONTAL), Vector2(i, -1))
+		__place_tile(__getConcreteTile(CONCRETE_TILE.HORIZONTAL), Vector2(i, gridSize))
+		__place_tile(__getConcreteTile(CONCRETE_TILE.VERTICAL), Vector2(gridSize, i))
+		__place_tile(__getConcreteTile(CONCRETE_TILE.VERTICAL), Vector2(-1, i))
+
+		
+
+func __areCoordinatesInGrid(cursor: Vector2) -> bool:
+	return (0 <= cursor.x and cursor.x <= GRID_SIZE - 1) and (0 <= cursor.y and cursor.y <= GRID_SIZE - 1)
+	
+func __getNextAxisCursorPosition(movements: Array[Vector2], currentMovementIndex: int, cursor: Vector2) -> Vector2:
+	Check.isInt(currentMovementIndex);
+	
+	var nextAxisMovementIndex = (currentMovementIndex + 1) % movements.size()
+	
+	return Vector2(cursor.x + movements[nextAxisMovementIndex].x, cursor.y + movements[nextAxisMovementIndex].y)
+	
+	
 func _ready() -> void:
+	__initWindowSize(GRID_SIZE)
 	var CENTER_TILE_COORDINATES = __getCenterTile()
 	var CENTER_TILE = __getRandomTile()
-	place_tile(CENTER_TILE, CENTER_TILE_COORDINATES)
+	__place_tile(CENTER_TILE, CENTER_TILE_COORDINATES)
+	
+	SELECTOR.hide()
 	add_child(SELECTOR)
+	
+	if RENDER_BARRIER:
+		__generateGridBarrier(GRID_SIZE)
+	
+	if not MANUAL_RENDER:
+		__generateGrid(GRID_SIZE)
 
 func _process(delta: float) -> void:
 	pass

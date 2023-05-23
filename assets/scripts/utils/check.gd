@@ -43,7 +43,7 @@ static func isString(value, throwIfNot: bool = true) -> bool:
 ## value: any - Value to check.
 ## throwIfNot: bool (default: true) - Throws an error if the check fails.
 static func isInt(value, throwIfNot: bool = true) -> bool:
-	return __check(typeof(value) == TYPE_INT, "Value must be an integer.", throwIfNot)
+	return __check(value == int(value), "Value must be an integer.", throwIfNot)
 
 
 
@@ -119,7 +119,35 @@ static func fileExtension(path: String, extension: String, throwIfNot: bool = tr
 
 
 
-## Check the given condition.
+## Check if the given value is an odd number.
+## Returns bool
+## STATIC - PUBLIC
+##
+## Returns 'true' if the given value is odd, 'false' otherwise.
+## Throws an error if the check fails and if 'throwIfNot' is true.
+##
+## value: int - Value to test.
+## throwIfNot: bool (default: true) - Throws an error if the check fails.
+static func isOdd(value: int, throwIfNot: bool = true) -> bool:
+	return __check(value % 2 == 1, "Value must be an odd number.", throwIfNot)
+
+
+
+## Check if the given value is an even number.
+## Returns bool
+## STATIC - PUBLIC
+##
+## Returns 'true' if the given value is even, 'false' otherwise.
+## Throws an error if the check fails and if 'throwIfNot' is true.
+##
+## value: int - Value to test.
+## throwIfNot: bool (default: true) - Throws an error if the check fails.
+static func isEven(value: int, throwIfNot: bool = true) -> bool:
+	return __check(value % 2 == 0, "Value must be an even number.", throwIfNot)
+
+
+
+# Check the given condition.
 ## Returns bool
 ## STATIC - PRIVATE
 ##
