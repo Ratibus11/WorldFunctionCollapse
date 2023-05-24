@@ -1,11 +1,28 @@
 extends Node2D
 
+const LOAD_TILE_GRID = true;
+const LOAD_VORONOI = true;
+const GRID_SIZE = 31
 
-# Called when the node enters the scene tree for the first time.
+# =====
+
+const TILE_SIZE = 30;
+
+func __initWindow():
+	var SIZE = GRID_SIZE * TILE_SIZE
+	DisplayServer.window_set_size(Vector2i(SIZE, SIZE))
+
 func _ready():
-	pass # Replace with function body.
+	__initWindow()
+	
+	if LOAD_VORONOI:
+		var voronoiScene = load("res://assets/scenes/voronoi/voronoi.tscn").instantiate()
+		add_child(voronoiScene)
+		
+	if LOAD_TILE_GRID:
+		var tileGridScene = load("res://assets/scenes/tile_grid/tile_grid.tscn").instantiate()
+		add_child(tileGridScene)
 
 
-# Called every frame. 'delta' is the elapsed time since the previous frame.
 func _process(delta):
 	pass

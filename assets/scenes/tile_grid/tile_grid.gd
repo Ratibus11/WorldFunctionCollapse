@@ -2,9 +2,11 @@ class_name TileGrid
 extends TileMap
 
 const RENDER_BARRIER = true
-const RENDER_SLEEP = 0.01
+const RENDER_SLEEP = 0
 const MANUAL_RENDER = false
-const GRID_SIZE = 31
+const RENDER_SELECTOR = true
+
+# =====
 
 const SCENE_PATH: String = "res://assets/scene/tile_grid/tile_grid.tscn"
 var SELECTOR = TileSelector.new()
@@ -29,15 +31,13 @@ enum CONCRETE_TILE {
 }
 
 const TILE_SIZE = 30
+var GRID_SIZE = DisplayServer.window_get_size().x / TILE_SIZE
 var tiles: Array[Tile] = []
 
 func __place_tile(tile: Tile, tile_coordinates: Vector2i, bypassLimits: bool = false) -> void:
 	if not bypassLimits and not __areCoordinatesInGrid(tile_coordinates):
 		push_warning(str("Cannot place tile at x:"+str(tile_coordinates.x)+" y:"+str(tile_coordinates.y)+"."))
 		return 
-		
-	Check.isInt(tile_coordinates.x)
-	Check.isInt(tile_coordinates.y)
 	
 	tile.position.x = tile_coordinates.x * TILE_SIZE
 	tile.position.y = tile_coordinates.y * TILE_SIZE
@@ -46,25 +46,25 @@ func __place_tile(tile: Tile, tile_coordinates: Vector2i, bypassLimits: bool = f
 	tiles.append(tile)
 
 func _input(event: InputEvent) -> void:
-	var TILE_COORDINATES = __getTileCoordinatesFromClick(event.position)
-	
-	if not __areCoordinatesInGrid(TILE_COORDINATES):
-		return
-	
-	if event is InputEventMouseButton:
-		if event.pressed == true:
-			if not __isTileOccupied(TILE_COORDINATES):
-				var possible_tiles = __getPossibleTiles(TILE_COORDINATES)
-				__place_tile(__getRandomTile(possible_tiles), TILE_COORDINATES)
-				
-	elif event is InputEventMouseMotion:
-		if MANUAL_RENDER:
-			if not __isTileOccupied(TILE_COORDINATES):
-				var COORDINATES = Vector2i(TILE_COORDINATES.x * TILE_SIZE, TILE_COORDINATES.y * TILE_SIZE)
-				SELECTOR.set_position(COORDINATES)
-				SELECTOR.show()
-			else:
-				SELECTOR.hide()
+	if event is InputEventMouse:
+		var TILE_COORDINATES = __getTileCoordinatesFromClick(event.position)
+		if not __areCoordinatesInGrid(TILE_COORDINATES):
+			return
+		
+		if event is InputEventMouseButton:
+			if event.pressed == true:
+				if not __isTileOccupied(TILE_COORDINATES):
+					var possible_tiles = __getPossibleTiles(TILE_COORDINATES)
+					__place_tile(__getRandomTile(possible_tiles), TILE_COORDINATES)
+					
+		elif event is InputEventMouseMotion:
+			if MANUAL_RENDER and RENDER_SELECTOR:
+				if not __isTileOccupied(TILE_COORDINATES):
+					var COORDINATES = Vector2i(TILE_COORDINATES.x * TILE_SIZE, TILE_COORDINATES.y * TILE_SIZE)
+					SELECTOR.set_position(COORDINATES)
+					SELECTOR.show()
+				else:
+					SELECTOR.hide()
 
 func __getPossibleTiles(new_tile_coordinates: Vector2i):
 	var TOP_NEIGHBOR_COORDINATES = Vector2i(new_tile_coordinates.x, new_tile_coordinates.y - 1)
@@ -176,15 +176,7 @@ func __getConcreteTiles() -> Array[Tile]:
 		TILES.append(__getConcreteTile(i))
 	return TILES
 	
-func __initWindowSize(size: int) -> void:
-	Check.isInt(size);
-	Check.isOdd(size);
-	
-	var SIZE = size * TILE_SIZE
-	DisplayServer.window_set_size(Vector2i(SIZE, SIZE))
-	
 func __generateGrid(size: int) -> void:
-	Check.isInt(size);
 	Check.isOdd(size);
 	
 	var cursor_x = (size - 1) / 2
@@ -217,7 +209,6 @@ func __generateGrid(size: int) -> void:
 				await get_tree().create_timer(RENDER_SLEEP).timeout
 
 func __generateGridBarrier(gridSize: int):
-	Check.isInt(gridSize);
 	Check.isOdd(gridSize);
 	
 	__place_tile(__getConcreteTile(CONCRETE_TILE.CORNER_BOTTOM_RIGHT), Vector2i(-1, -1), true)
@@ -233,19 +224,18 @@ func __generateGridBarrier(gridSize: int):
 
 		
 
-func __areCoordinatesInGrid(cursor: Vector2i) -> bool:
+func __areCoordinatesInGrid(cursor: Vector2i) -> bool:	
 	return (0 <= cursor.x and cursor.x <= GRID_SIZE - 1) and (0 <= cursor.y and cursor.y <= GRID_SIZE - 1)
 	
 func __getNextAxisCursorPosition(movements: Array[Vector2i], currentMovementIndex: int, cursor: Vector2i) -> Vector2i:
-	Check.isInt(currentMovementIndex);
-	
 	var nextAxisMovementIndex = (currentMovementIndex + 1) % movements.size()
 	
 	return Vector2i(cursor.x + movements[nextAxisMovementIndex].x, cursor.y + movements[nextAxisMovementIndex].y)
 	
-	
 func _ready() -> void:
-	__initWindowSize(GRID_SIZE)
+	if not Check.isInt(GRID_SIZE):
+		push_error("Window dimensions must be a multiple of "+str(TILE_SIZE))
+		
 	var CENTER_TILE_COORDINATES = __getCenterTile()
 	var CENTER_TILE = __getRandomTile()
 	__place_tile(CENTER_TILE, CENTER_TILE_COORDINATES)
