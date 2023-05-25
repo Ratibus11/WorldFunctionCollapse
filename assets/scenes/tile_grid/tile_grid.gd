@@ -5,6 +5,7 @@ const RENDER_BARRIER = true
 const RENDER_SLEEP = 0
 const MANUAL_RENDER = false
 const RENDER_SELECTOR = true
+const PREVENT_OPRHAN_ROADS = false
 
 # =====
 
@@ -66,38 +67,104 @@ func _input(event: InputEvent) -> void:
 				else:
 					SELECTOR.hide()
 
-func __getPossibleTiles(new_tile_coordinates: Vector2i):
-	var TOP_NEIGHBOR_COORDINATES = Vector2i(new_tile_coordinates.x, new_tile_coordinates.y - 1)
-	var BOTTOM_NEIGHBOR_COORDINATES = Vector2i(new_tile_coordinates.x, new_tile_coordinates.y + 1)
-	var LEFT_NEIGHBOR_COORDINATES = Vector2i(new_tile_coordinates.x - 1, new_tile_coordinates.y)
-	var RIGHT_NEIGHBOR_COORDINATES = Vector2i(new_tile_coordinates.x + 1, new_tile_coordinates.y)
-	
-	var TOP_NEIGHBOR = __getTile(TOP_NEIGHBOR_COORDINATES)
-	var BOTTOM_NEIGHBOR = __getTile(BOTTOM_NEIGHBOR_COORDINATES)
-	var LEFT_NEIGHBOR = __getTile(LEFT_NEIGHBOR_COORDINATES)
-	var RIGHT_NEIGHBOR = __getTile(RIGHT_NEIGHBOR_COORDINATES)
+func __getTopNeighborCoordinates(tile: Vector2i) -> Vector2i:
+	return Vector2i(tile.x, tile.y - 1)
 
+func __getRightNeighborCoordinates(tile: Vector2i) -> Vector2i:
+	return Vector2i(tile.x + 1, tile.y)
+	
+func __getBottomNeighborCoordinates(tile: Vector2i) -> Vector2i:
+	return Vector2i(tile.x, tile.y + 1)
+	
+func __getLeftNeighborCoordinates(tile: Vector2i) -> Vector2i:
+	return Vector2i(tile.x - 1, tile.y)	
+
+func __getTopNeighbor(tile: Vector2i) -> Tile:
+	var TOP_NEIGHBOR_COORDINATES = __getTopNeighborCoordinates(tile)
+	return __getTile(TOP_NEIGHBOR_COORDINATES)
+	
+func __getRightNeighbor(tile: Vector2i) -> Tile:
+	var TOP_NEIGHBOR_COORDINATES = __getRightNeighborCoordinates(tile)
+	return __getTile(TOP_NEIGHBOR_COORDINATES)
+	
+func __getBottomNeighbor(tile: Vector2i) -> Tile:
+	var TOP_NEIGHBOR_COORDINATES = __getBottomNeighborCoordinates(tile)
+	return __getTile(TOP_NEIGHBOR_COORDINATES)
+	
+func __getLeftNeighbor(tile: Vector2i) -> Tile:
+	var TOP_NEIGHBOR_COORDINATES = __getLeftNeighborCoordinates(tile)
+	return __getTile(TOP_NEIGHBOR_COORDINATES)
+
+func __getPossibleTiles(newTileCoordinates: Vector2i):
 	var possible_tiles: Array[Tile] = __getConcreteTiles().duplicate()
-	var canNeighborConnect: bool
+
+	if PREVENT_OPRHAN_ROADS:
+		var neighborsEscapes = __howManyEscapes(newTileCoordinates, [])
+	
+		if neighborsEscapes < 1:
+			possible_tiles = possible_tiles.filter(func(pt: Tile): return [pt.canConnectTop(), pt.canConnectBottom(), pt.canConnectLeft(), pt.canConnectRight()].count(true) != 1)
+	
+	var TOP_NEIGHBOR = __getTopNeighbor(newTileCoordinates)
+	var BOTTOM_NEIGHBOR = __getBottomNeighbor(newTileCoordinates)
+	var LEFT_NEIGHBOR = __getLeftNeighbor(newTileCoordinates)
+	var RIGHT_NEIGHBOR = __getRightNeighbor(newTileCoordinates)
 	
 	if (TOP_NEIGHBOR):
-		canNeighborConnect = TOP_NEIGHBOR.canConnectBottom()
-		possible_tiles = possible_tiles.filter(func(pt: Tile): return pt.canConnectTop() if canNeighborConnect else not pt.canConnectTop())
-	
+		possible_tiles = possible_tiles.filter(func(pt: Tile): return pt.canConnectTop() if TOP_NEIGHBOR.canConnectBottom() else not pt.canConnectTop())
 	if (BOTTOM_NEIGHBOR):
-		canNeighborConnect = BOTTOM_NEIGHBOR.canConnectTop()
-		possible_tiles = possible_tiles.filter(func(pt: Tile): return pt.canConnectBottom() if canNeighborConnect else not pt.canConnectBottom())
-	
+		possible_tiles = possible_tiles.filter(func(pt: Tile): return pt.canConnectBottom() if BOTTOM_NEIGHBOR.canConnectTop() else not pt.canConnectBottom())
 	if (LEFT_NEIGHBOR):
-		canNeighborConnect = LEFT_NEIGHBOR.canConnectRight()
-		possible_tiles = possible_tiles.filter(func(pt: Tile): return pt.canConnectLeft() if canNeighborConnect else not pt.canConnectLeft())
-	
+		possible_tiles = possible_tiles.filter(func(pt: Tile): return pt.canConnectLeft() if LEFT_NEIGHBOR.canConnectRight() else not pt.canConnectLeft())
 	if (RIGHT_NEIGHBOR):
-		canNeighborConnect = RIGHT_NEIGHBOR.canConnectLeft()
-		possible_tiles = possible_tiles.filter(func(pt: Tile): return pt.canConnectRight() if canNeighborConnect else not pt.canConnectRight())
+		possible_tiles = possible_tiles.filter(func(pt: Tile): return pt.canConnectRight() if RIGHT_NEIGHBOR.canConnectLeft() else not pt.canConnectRight())
 		
 	return possible_tiles
-
+	
+func __howManyEscapes(startTileCoordinates: Vector2i, explored: Array[Vector2i]) -> int:
+	var TOP_NEIGHBOR_COORDINATES = __getTopNeighborCoordinates(startTileCoordinates)
+	var RIGHT_NEIGHBOR_COORDINATES = __getRightNeighborCoordinates(startTileCoordinates)
+	var BOTTOM_NEIGHBOR_COORDINATES = __getBottomNeighborCoordinates(startTileCoordinates)
+	var LEFT_NEIGHBOR_COORDINATES = __getLeftNeighborCoordinates(startTileCoordinates)
+	
+	var TOP_NEIGHBOR = __getTopNeighbor(startTileCoordinates)
+	var RIGHT_NEIGHBOR = __getRightNeighbor(startTileCoordinates)
+	var BOTTOM_NEIGHBOR = __getBottomNeighbor(startTileCoordinates)
+	var LEFT_NEIGHBOR = __getLeftNeighbor(startTileCoordinates)
+	
+	var TILE = __getTile(startTileCoordinates)
+	
+	if startTileCoordinates in explored:
+		return 2
+		
+	explored.append(startTileCoordinates)
+	
+	var doesTopHasEscape: int = 0
+	var doesRightHasEscape: int = 0
+	var doesBottomHasEscape: int = 0
+	var doesLeftHasEscape: int = 0
+	
+	if TOP_NEIGHBOR and TOP_NEIGHBOR.canConnectBottom():
+		doesTopHasEscape = 1 if __howManyEscapes(TOP_NEIGHBOR_COORDINATES, explored) > 1 else 0
+	elif TILE and TILE.canConnectTop() and not TOP_NEIGHBOR_COORDINATES in explored :
+		doesTopHasEscape = 1
+	
+	if RIGHT_NEIGHBOR and RIGHT_NEIGHBOR.canConnectLeft():
+		doesRightHasEscape = 1 if __howManyEscapes(RIGHT_NEIGHBOR_COORDINATES, explored) > 1 else 0
+	elif TILE and TILE.canConnectRight() and not RIGHT_NEIGHBOR_COORDINATES in explored :
+		doesRightHasEscape = 1
+	
+	if BOTTOM_NEIGHBOR and BOTTOM_NEIGHBOR.canConnectTop():
+		doesBottomHasEscape = 1 if __howManyEscapes(BOTTOM_NEIGHBOR_COORDINATES, explored) > 1 else 0
+	elif TILE and TILE.canConnectBottom() and not BOTTOM_NEIGHBOR_COORDINATES in explored :
+		doesBottomHasEscape = 1
+		
+	if LEFT_NEIGHBOR and LEFT_NEIGHBOR.canConnectRight():
+		doesLeftHasEscape = 1 if __howManyEscapes(LEFT_NEIGHBOR_COORDINATES, explored) > 1 else 0
+	elif TILE and TILE.canConnectLeft() and not RIGHT_NEIGHBOR_COORDINATES in explored :
+		doesLeftHasEscape = 1
+	
+	return doesTopHasEscape + doesRightHasEscape + doesBottomHasEscape + doesLeftHasEscape
+	
 func __getTileCoordinatesFromClick(vector: Vector2i) -> Vector2i:
 	var X = vector.x
 	var Y = vector.y
